@@ -1,25 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { auth, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-
-export const useUserRole = () => {
-  const [userData, setUserData] = useState(null);
+export function useUserRole() {
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const fetchRole = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    const fetchUserData = async () => {
+      console.log("Current Firebase user:", auth.currentUser);
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
 
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setUserData(docSnap.data());
+      const userDocRef = doc(db, "users", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUser(userDoc.data());
       }
     };
 
-    fetchRole();
+    fetchUserData();
   }, []);
 
-  return userData; 
-};
+  return user; // either null or { role, department, ... }
+}
