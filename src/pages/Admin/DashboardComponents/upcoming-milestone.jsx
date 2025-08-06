@@ -1,13 +1,34 @@
 import { useQuery } from "@tanstack/react-query";
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { db } from "../../../firebase"; // 🔁 adjust if your path is different
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/Card";
 import { Badge } from "../../../ui/Badge";
 import { Skeleton } from "../../../ui/Skeleton";
 import { Calendar, Clock } from "lucide-react";
 import { format, isAfter, addDays } from "date-fns";
 
+// 📦 Fetch upcoming milestones from Firestore
+const fetchUpcomingMilestones = async () => {
+  const now = new Date();
+  const q = query(
+    collection(db, "milestones"),
+    where("dueDate", ">=", now),
+    orderBy("dueDate")
+  );
+
+  const snapshot = await getDocs(q);
+  const milestones = snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)) // sort just in case
+    .slice(0, 5); // limit to 5 milestones
+
+  return milestones;
+};
+
 export default function UpcomingMilestones() {
   const { data: milestones = [], isLoading } = useQuery({
-    queryKey: ['/api/milestones', { upcoming: true, limit: 5 }],
+    queryKey: ["upcoming-milestones"],
+    queryFn: fetchUpcomingMilestones,
   });
 
   const getUrgencyColor = (dueDate) => {
@@ -16,13 +37,13 @@ export default function UpcomingMilestones() {
     const oneWeekFromNow = addDays(now, 7);
 
     if (isAfter(now, dueDate)) {
-      return 'bg-red-100 text-red-800'; // Overdue
+      return 'bg-red-100 text-red-800';
     } else if (isAfter(dueDate, now) && isAfter(threeDaysFromNow, dueDate)) {
-      return 'bg-orange-100 text-orange-800'; // Due soon
+      return 'bg-orange-100 text-orange-800';
     } else if (isAfter(dueDate, now) && isAfter(oneWeekFromNow, dueDate)) {
-      return 'bg-yellow-100 text-yellow-800'; // Due this week
+      return 'bg-yellow-100 text-yellow-800';
     }
-    return 'bg-blue-100 text-blue-800'; // Future
+    return 'bg-blue-100 text-blue-800';
   };
 
   const getUrgencyText = (dueDate) => {
@@ -84,7 +105,7 @@ export default function UpcomingMilestones() {
                   {getUrgencyText(new Date(milestone.dueDate))}
                 </Badge>
               </div>
-              
+
               <div className="flex items-center text-xs text-gray-600">
                 <Clock className="h-3 w-3 mr-1" />
                 Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}

@@ -1,16 +1,21 @@
-import { useState } from "react";
+import { useState, createContext, useContext } from "react";
+
+// Create context to share state internally
+const SelectContext = createContext();
 
 export function Select({ value, onValueChange, children, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative">
-      {children({ value, onValueChange, isOpen, setIsOpen, disabled })}
-    </div>
+    <SelectContext.Provider value={{ value, onValueChange, isOpen, setIsOpen, disabled }}>
+      <div className="relative">{children}</div>
+    </SelectContext.Provider>
   );
 }
 
-export function SelectTrigger({ className = "", children, isOpen, setIsOpen, disabled }) {
+export function SelectTrigger({ className = "", children }) {
+  const { isOpen, setIsOpen, disabled } = useContext(SelectContext);
+
   return (
     <button
       type="button"
@@ -26,24 +31,31 @@ export function SelectTrigger({ className = "", children, isOpen, setIsOpen, dis
   );
 }
 
-export function SelectValue({ placeholder, value }) {
+export function SelectValue({ placeholder }) {
+  const { value } = useContext(SelectContext);
   return <span>{value || placeholder}</span>;
 }
 
-export function SelectContent({ className = "", children, isOpen, setIsOpen }) {
+export function SelectContent({ className = "", children }) {
+  const { isOpen, setIsOpen } = useContext(SelectContext);
+
   if (!isOpen) return null;
-  
+
   return (
     <>
       <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-      <div className={`absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto ${className}`}>
+      <div
+        className={`absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto ${className}`}
+      >
         {children}
       </div>
     </>
   );
 }
 
-export function SelectItem({ value, children, onValueChange, setIsOpen }) {
+export function SelectItem({ value, children }) {
+  const { onValueChange, setIsOpen } = useContext(SelectContext);
+
   return (
     <button
       type="button"

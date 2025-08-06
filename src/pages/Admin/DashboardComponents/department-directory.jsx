@@ -1,15 +1,36 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../../firebase";
+
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/Card";
 import { Badge } from "../../../ui/Badge";
 import { Skeleton } from "../../../ui/Skeleton";
 import { Building2, Mail, Phone } from "lucide-react";
 
 export default function DepartmentDirectory() {
-  const { data: departments = [], isLoading } = useQuery({
-    queryKey: ['/api/departments'],
-  });
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  if (isLoading) {
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "departments"));
+      const fetchedDepartments = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setDepartments(fetchedDepartments);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
       <Card>
         <CardHeader>

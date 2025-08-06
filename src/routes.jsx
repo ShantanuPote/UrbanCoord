@@ -11,9 +11,10 @@ import AdminLayout from "./components/AdminLayout";
 import Overview from "./pages/Admin/overview";
 import Projects from "./pages/Admin/Projects";
 import Coordination from "./pages/Admin/Coordination";
-import Suggestions from "./pages/Admin/Suggestions";
-import Notifications from "./pages/Admin/Notifications";
-import MeetingDocs from "./pages/Admin/Docs";
+import Timeline from "./pages/Admin/Timeline";
+import Communication from "./pages/Admin/Communication";
+import Departments from "./pages/Admin/Departments"
+import Resources from "./pages/Admin/Resources";
 // import Settings from "./pages/Admin/Settings";
 
 export default function AppRoutes() {
@@ -30,9 +31,11 @@ export default function AppRoutes() {
         <Route index element={<Overview />} />
         <Route path="projects" element={<Projects />} />
         <Route path="coordination" element={<Coordination />} />
-        <Route path="suggestions" element={<Suggestions />} />
-        <Route path="notifications" element={<Notifications />} />
-        <Route path="meeting-docs" element={<MeetingDocs />} />
+        <Route path="Resources" element={<Resources />} />
+        <Route path="timeline" element={<Timeline />} />
+        <Route path="communications" element={<Communication />} />
+        <Route path="departments" element={<Departments />} />
+
         {/* <Route path="settings" element={<Settings />} /> */}
       </Route>
     </Routes>

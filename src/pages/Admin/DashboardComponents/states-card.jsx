@@ -1,8 +1,44 @@
+import { useQuery } from "@tanstack/react-query";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../../firebase"; // adjust if your path is different
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/Card";
 import { Skeleton } from "../../../ui/Skeleton";
 import { FolderOpen, Building2, AlertTriangle, DollarSign } from "lucide-react";
 
-export default function StatsCards({ stats, isLoading }) {
+// Fetch stats from Firestore
+const fetchStats = async () => {
+  const [projectsSnap, departmentsSnap] = await Promise.all([
+    getDocs(collection(db, "projects")),
+    getDocs(collection(db, "departments")),
+  ]);
+
+  const projects = projectsSnap.docs.map(doc => doc.data());
+  const departments = departmentsSnap.docs.map(doc => doc.data());
+
+  const activeProjects = projects.filter(p => p.status === "active").length;
+  const conflicts = projects.filter(p => p.hasConflict === true).length;
+
+  const totalBudgetUsed = projects.reduce((sum, p) => sum + (p.budgetUsed || 0), 0);
+  const totalBudgetAllocated = projects.reduce((sum, p) => sum + (p.budgetAllocated || 0), 0);
+
+  const budgetUtilization = totalBudgetAllocated
+    ? Math.round((totalBudgetUsed / totalBudgetAllocated) * 100)
+    : 0;
+
+  return {
+    activeProjects,
+    departments: departments.length,
+    conflicts,
+    budgetUtilization,
+  };
+};
+
+export default function StatsCards() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: fetchStats,
+  });
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -22,9 +58,7 @@ export default function StatsCards({ stats, isLoading }) {
     );
   }
 
-  if (!stats) {
-    return null;
-  }
+  if (!stats) return null;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

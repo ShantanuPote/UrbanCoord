@@ -125,6 +125,8 @@
 // }
 
 
+
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import StatsCards from "./DashboardComponents/states-card";
 import ConflictAlerts from "./DashboardComponents/conflict-alert";
@@ -133,12 +135,35 @@ import UpcomingMilestones from "./DashboardComponents/upcoming-milestone";
 import DepartmentDirectory from "./DashboardComponents/department-directory";
 import RecentMessages from "./DashboardComponents/recent-message";
 import ResourceAllocationTable from "./DashboardComponents/resource-allocation-table";
+import NewProjectForm from "../../components/NewProjectForm";
 import { Button } from "../../ui/Button";
 import { Download, Plus } from "lucide-react";
+import { db } from "../../firebase";
+import { collection, getDocs } from "firebase/firestore";
+
+const fetchDashboardStats = async () => {
+  const projectsSnap = await getDocs(collection(db, "projects"));
+  const departmentsSnap = await getDocs(collection(db, "departments"));
+
+  const activeProjects = projectsSnap.docs.length;
+  const departments = departmentsSnap.docs.length;
+
+  const stats = {
+    activeProjects,
+    departments,
+    conflicts: 0,        // Replace this with Firestore data if needed
+    budgetUsed: 0,       // Replace this with Firestore data if needed
+  };
+
+  return stats;
+};
 
 export default function Dashboard() {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/dashboard/stats'],
+    queryKey: ['dashboard-stats'],
+    queryFn: fetchDashboardStats,
   });
 
   return (
@@ -154,13 +179,13 @@ export default function Dashboard() {
               <Download className="mr-2 h-4 w-4" />
               Export Data
             </Button>
-            <Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               New Project
             </Button>
           </div>
         </div>
-        
+
         <StatsCards stats={stats} isLoading={statsLoading} />
       </div>
 
@@ -170,7 +195,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2">
           <ProjectOverview />
         </div>
-        
+
         <div className="space-y-6">
           <UpcomingMilestones />
           <DepartmentDirectory />
@@ -181,6 +206,18 @@ export default function Dashboard() {
       <div className="mt-8">
         <ResourceAllocationTable />
       </div>
+
+      {/* New Project Modal */}
+      {isCreateDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Create New Project</h2>
+              <NewProjectForm onSuccess={() => setIsCreateDialogOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

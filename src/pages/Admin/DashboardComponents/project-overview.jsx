@@ -1,4 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { db } from "../../../firebase"; // Make sure your firebase.js exports db
+import { collection, getDocs } from "firebase/firestore";
+
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/Card";
 import { Badge } from "../../../ui/Badge";
 import { Progress } from "../../../ui/Progress";
@@ -7,36 +10,52 @@ import { FolderOpen, MapPin, Building2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function ProjectOverview() {
-  const { data: projects = [], isLoading: projectsLoading } = useQuery({
-    queryKey: ['/api/projects'],
-  });
+  const [projects, setProjects] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: departments = [] } = useQuery({
-    queryKey: ['/api/departments'],
-  });
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const projectSnap = await getDocs(collection(db, "projects"));
+      const deptSnap = await getDocs(collection(db, "departments"));
+
+      const projectData = projectSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const deptData = deptSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      setProjects(projectData);
+      setDepartments(deptData);
+    } catch (err) {
+      console.error("Error fetching projects or departments:", err);
+    }
+    setLoading(false);
+  };
 
   const getDepartmentName = (id) => {
     const dept = departments.find((d) => d.id === id);
-    return dept?.shortName || dept?.name || 'Unknown Department';
+    return dept?.shortName || dept?.name || "Unknown Department";
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'planning': return 'bg-blue-100 text-blue-800';
-      case 'delayed': return 'bg-red-100 text-red-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "active": return "bg-green-100 text-green-800";
+      case "planning": return "bg-blue-100 text-blue-800";
+      case "delayed": return "bg-red-100 text-red-800";
+      case "completed": return "bg-gray-100 text-gray-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Show recent and active projects
   const recentProjects = projects
     .filter(p => p.status === 'active' || p.status === 'planning')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 6);
 
-  if (projectsLoading) {
+  if (loading) {
     return (
       <Card>
         <CardHeader>
@@ -82,7 +101,7 @@ export default function ProjectOverview() {
                   {project.status}
                 </Badge>
               </div>
-              
+
               <div className="space-y-2 text-xs text-gray-600">
                 <div className="flex items-center">
                   <MapPin className="h-3 w-3 mr-1" />
@@ -94,7 +113,7 @@ export default function ProjectOverview() {
                 </div>
                 {project.startDate && (
                   <div className="text-xs text-gray-500">
-                    Started: {format(new Date(project.startDate), 'MMM dd, yyyy')}
+                    Started: {format(new Date(project.startDate), "MMM dd, yyyy")}
                   </div>
                 )}
               </div>

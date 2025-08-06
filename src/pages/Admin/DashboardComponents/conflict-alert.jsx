@@ -1,15 +1,56 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../../firebase";
+
 import { Card, CardContent, CardHeader, CardTitle } from "../../../ui/Card";
 import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { AlertTriangle, MapPin, Package } from "lucide-react";
 
 export default function ConflictAlerts() {
-  const { data: conflicts = [], isLoading } = useQuery({
-    queryKey: ['/api/conflicts'],
-  });
+  const [conflicts, setConflicts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  if (isLoading) {
+  useEffect(() => {
+    fetchConflicts();
+  }, []);
+
+  const fetchConflicts = async () => {
+    setLoading(true);
+
+    const snapshot = await getDocs(collection(db, "projects"));
+    const projects = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      start: new Date(doc.data().startDate),
+      end: new Date(doc.data().endDate),
+    }));
+
+    const timelineConflicts = [];
+
+    for (let i = 0; i < projects.length; i++) {
+      for (let j = i + 1; j < projects.length; j++) {
+        const a = projects[i];
+        const b = projects[j];
+
+        const sameLocation = a.location === b.location;
+        const overlap = a.start <= b.end && b.start <= a.end;
+
+        if (sameLocation && overlap) {
+          timelineConflicts.push({
+            type: "location_timeline_conflict",
+            location: a.location,
+            projects: [a, b],
+          });
+        }
+      }
+    }
+
+    setConflicts(timelineConflicts);
+    setLoading(false);
+  };
+
+  if (loading) {
     return (
       <Card className="mb-8">
         <CardHeader>
@@ -42,7 +83,9 @@ export default function ConflictAlerts() {
             </div>
             <div>
               <h3 className="font-medium text-green-900">No Conflicts Detected</h3>
-              <p className="text-sm text-green-700">All resource allocations and project timelines are properly coordinated.</p>
+              <p className="text-sm text-green-700">
+                All resource allocations and project timelines are properly coordinated.
+              </p>
             </div>
           </div>
         </CardContent>
@@ -61,59 +104,30 @@ export default function ConflictAlerts() {
       <CardContent className="space-y-4">
         {conflicts.map((conflict, index) => (
           <div key={index} className="bg-white p-4 rounded-lg border border-amber-200">
-            {conflict.type === 'resource_overallocation' && (
-              <div className="flex items-start justify-between">
-                <div className="flex items-start">
-                  <Package className="h-4 w-4 text-amber-600 mr-2 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Resource Over-allocation</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      <strong>{conflict.resourceName}</strong> is over-allocated: {conflict.allocatedQuantity} requested vs {conflict.totalQuantity} available
-                    </p>
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-500 mb-1">Conflicting projects:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {conflict.conflictingProjects?.map((project) => (
-                          <Badge key={project.id} variant="secondary" className="text-xs">
-                            {project.title}
-                          </Badge>
-                        ))}
-                      </div>
+            <div className="flex items-start justify-between">
+              <div className="flex items-start">
+                <MapPin className="h-4 w-4 text-amber-600 mr-2 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-gray-900">Location Timeline Conflict</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Multiple projects scheduled at <strong>{conflict.location}</strong> with overlapping timelines
+                  </p>
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-500 mb-1">Conflicting projects:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {conflict.projects?.map((project) => (
+                        <Badge key={project.id} variant="secondary" className="text-xs">
+                          {project.title}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <Button size="sm" variant="outline">
-                  Resolve
-                </Button>
               </div>
-            )}
-            
-            {conflict.type === 'location_timeline_conflict' && (
-              <div className="flex items-start justify-between">
-                <div className="flex items-start">
-                  <MapPin className="h-4 w-4 text-amber-600 mr-2 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Location Timeline Conflict</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Multiple projects scheduled at <strong>{conflict.location}</strong> with overlapping timelines
-                    </p>
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-500 mb-1">Conflicting projects:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {conflict.projects?.map((project) => (
-                          <Badge key={project.id} variant="secondary" className="text-xs">
-                            {project.title}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline">
-                  Resolve
-                </Button>
-              </div>
-            )}
+              <Button size="sm" variant="outline">
+                Resolve
+              </Button>
+            </div>
           </div>
         ))}
       </CardContent>
